@@ -1,0 +1,252 @@
+/* Prefix: vst-web-config- */
+.vst-web-config-warning-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    z-index: 11;
+}
+
+.vst-web-config-red-asf {
+    color: red;
+    font-weight: bold;
+    font-size: 3em;
+    background-color: black;
+}
+
+.vst-web-config-warning-popup-p-accent {
+    color: var(--accent);
+    font-weight: bold;
+    font-size: 1.5em;
+}
+
+.vst-web-config-container {
+    background-color: var(--main-bg);
+    color: white;
+    padding: 50px;
+}
+
+.vst-web-config-stats {
+    margin-top: 20px;
+    background-color: var(--secondary-bg);
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.vst-web-config-stats-title {
+    margin-top: 0;
+    width: 100%;
+    border-bottom: 1px solid var(--accent);
+}
+
+#vst-web-config-memory-progress {
+    --progress: 0;
+    width: 50%;
+    height: 20px;
+    background:
+        linear-gradient(#000 0 0) 0/0% no-repeat #ddd;
+    animation: l1 2s infinite linear;
+    background-size: var(--progress) 100%;
+}
+
+.vst-web-config-mem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.vst-web-config-power-options {
+    display: flex;
+    margin-top: 20px;
+    justify-content: space-between;
+}
+
+.vst-web-config-power-options .vst-web-config-select-and-start {
+    border: 1px solid var(--accent);
+    padding: 10px 20px;
+}
+
+.vst-web-config-power-options .vst-web-config-select-and-start p {
+    margin: 0;
+    font-weight: bold;
+}
+
+#vst-web-config-plugin-select {
+    margin-bottom: 10px;
+}
+
+.vst-web-config-stop {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    margin-top: 20px;
+}
+
+.vst-web-config-stop button {
+    height: min-content;
+}
+
+.vst-web-config-setup {
+    margin-top: 20px;
+    background-color: var(--secondary-bg);
+    padding: 20px;
+    border-radius: 10px;
+    display: none;
+
+}
+
+.vst-web-config-setup-label {
+    margin-top: 20px;
+}
+
+.vst-web-config-setup-label .vst-web-config-btn-arrow::before {
+    content: ">";
+    display: inline-block;
+    transition: transform 0.3s ease;
+}
+
+#vst-web-config-setup-btn:checked+.vst-web-config-setup-label .vst-web-config-btn-arrow::before {
+    transform: rotate(90deg);
+}
+
+#vst-web-config-setup-btn:not(:checked)+.vst-web-config-setup-label .vst-web-config-btn-arrow::before {
+    transform: rotate(0deg);
+}
+
+#vst-web-config-setup-btn:checked~.vst-web-config-setup {
+    display: block;
+}
+
+#vst-web-config-setup-btn:not(:checked)~.vst-web-config-setup {
+    display: none;
+}
+
+
+.vst-web-config-save-locally-ig {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.vst-web-config-form-error {
+    color: rgb(160, 0, 0);
+    font-weight: bold;
+}
+
+.vst-web-config-view-vm {
+    margin-top: 20px;
+}
+
+.vst-web-config-warning-popup {
+    display: none;
+}
+
+.vst-web-config-muted {
+    opacity: 0.5;
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+.vst-web-config-view-vm {
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    border-radius: 10px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    box-sizing: border-box;
+    display: none;
+    overflow-y: auto;
+}
+
+.vst-web-config-view-vm>div {
+    top: 0;
+    left: 0;
+    position: absolute;
+    margin: 30px;
+    background-color: var(--main-bg);
+    padding: 15px;
+    border-radius: 10px;
+}
+
+.vst-web-config-vm-view-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 1.5em;
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid var(--accent);
+}
+
+.vst-web-config-vm-view-close>span {
+    transform: translateY(-2px);
+    /* Wasn't perfectly centered, this fixes it */
+}
+
+.vst-web-config-disable-all {
+    display: flex;
+    align-items: center;
+    margin-top: 20px;
+}
+
+/* HTML: <div class="loader"></div> */
+.vst-web-config-loader,
+.vst-web-config-select-loader {
+    display: none;
+    width: 60px;
+    aspect-ratio: 2;
+    --_g: no-repeat radial-gradient(circle closest-side, white, 90%, transparent);
+    background:
+        var(--_g) 0% 50%,
+        var(--_g) 50% 50%,
+        var(--_g) 100% 50%;
+    background-size: calc(100%/3) 50%;
+    animation: l3 1s infinite linear;
+}
+
+.vst-web-config-vm-canvas {
+    top: 50%;
+    position: absolute;
+    background-color: black;
+    image-rendering: pixelated;
+}
+
+@keyframes l3 {
+    20% {
+        background-position: 0% 0%, 50% 50%, 100% 50%
+    }
+
+    40% {
+        background-position: 0% 100%, 50% 0%, 100% 50%
+    }
+
+    60% {
+        background-position: 0% 50%, 50% 100%, 100% 0%
+    }
+
+    80% {
+        background-position: 0% 50%, 50% 50%, 100% 100%
+    }
+}

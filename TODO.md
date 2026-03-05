@@ -1,0 +1,3 @@
+- [ ] Add length to note after creation
+- [ ] Fix pointer in redo/undo buffer
+- [ ] More documentation in code (especially function's comments)

@@ -1,0 +1,1 @@
+https://nextapps-de.github.io/winbox/ -- Could be useful for the VM view, to allow resizing and moving it around.
