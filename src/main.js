@@ -26,11 +26,22 @@ WebDawMgr.init().then(async () => {
     document.getElementById("initVst").onclick = async () => {
         window.webDaw.sharePools["global/audio/vstWeb"].init();
     };
+    document.getElementById("qs-audio-buffer-btn").onclick = () => {
+        const value = parseInt(document.getElementById("qs-audio-buffer").value);
+        if (isNaN(value) || value < 0) {
+            alert("Please enter a valid non-negative number for the audio buffer.");
+            return;
+        }
+        window.webDaw.sharePools["global/audio/vstWeb"].setAudioBufferSize(value);// TODO: adjust for new buffer system (audiomgr)
+    }
     document.getElementById("openVstConfig").onclick = () => {
         windowManager.openVMView("VstWebConfig");
     };
     document.getElementById("openMidiNotes").onclick = () => {
         windowManager.openVMView("NotesCreator");
+    };
+    document.getElementById("openSongParts").onclick = () => {
+        windowManager.openVMView("SongParts");
     };
 
 

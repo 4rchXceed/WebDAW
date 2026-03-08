@@ -69,10 +69,10 @@ hr {
     padding: 0;
 }
 
-input[type="text"],
-input[type="number"],
-input[type="email"],
-input[type="password"],
+input[type="text"]:not(.no-global-style):not(.no-global-style),
+input[type="number"]:not(.no-global-style),
+input[type="email"]:not(.no-global-style),
+input[type="password"]:not(.no-global-style),
 textarea {
     background-color: var(--accent);
     color: white;
@@ -82,19 +82,19 @@ textarea {
     box-sizing: border-box;
 }
 
-input[type="text"]:focus,
-input[type="number"]:focus,
-input[type="email"]:focus,
-input[type="password"]:focus,
+input[type="text"]:not(.no-global-style):focus,
+input[type="number"]:not(.no-global-style):focus,
+input[type="email"]:not(.no-global-style):focus,
+input[type="password"]:not(.no-global-style):focus,
 textarea:focus {
     outline: none;
     box-shadow: 0 0 5px var(--accent);
 }
 
-input[type="text"]::placeholder,
-input[type="number"]::placeholder,
-input[type="email"]::placeholder,
-input[type="password"]::placeholder,
+input[type="text"]:not(.no-global-style)::placeholder,
+input[type="number"]:not(.no-global-style)::placeholder,
+input[type="email"]:not(.no-global-style)::placeholder,
+input[type="password"]:not(.no-global-style)::placeholder,
 textarea::placeholder {
     color: #ccc;
 }

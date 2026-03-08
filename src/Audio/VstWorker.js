@@ -240,8 +240,8 @@ class VstWebWorker {
         }
     }
 
-    async loadVst(vstArrayBuffer, pluginPath) {
-        await this.vstWeb.loadVSTPlugin(vstArrayBuffer, pluginPath, WorkerAudioStreamable);
+    async loadVst(vstArrayBuffer, pluginPath, saveState = false) {
+        return await this.vstWeb.loadVSTPlugin(vstArrayBuffer, pluginPath, WorkerAudioStreamable, saveState);
     }
 
     async playNote(note, velocity, duration) {
@@ -258,12 +258,20 @@ class VstWebWorker {
         this.vstWeb.sendNote(`${note}:0${velocity}`);
     }
 
+    async getState() {
+        return await this.vstWeb.saveState()
+    }
+
+    async loadStateFromObj(stateObj) {
+        await this.vstWeb.loadStateFromObj(stateObj, WorkerAudioStreamable);
+    }
+
     idle() {
         this.vstWeb.vm.stop(); // Pause the VM to reduce CPU usage when idle
     }
 
     stopIdle() {
-        this.vstWeb.vm.start(); // Resume the VM when stopping idle
+        this.vstWeb.vm.run(); // Resume the VM when stopping idle
     }
 
     // getScreen() {
@@ -278,18 +286,22 @@ class VstWebWorker {
 const vstWebWorker = new VstWebWorker();
 
 
+
 self.onmessage = async (event) => {
     const { type, data } = event.data;
     switch (type) {
         case "init":
             await vstWebWorker.init(data.vstWebConfig, data.v86Config);
+            console.log(vstWebWorker); // Expose the vstWebWorker instance for debugging
             self.postMessage({ type: "init_done" });
             break;
         case "loadVst":
-            await vstWebWorker.loadVst(data.vstArrayBuffer, data.pluginPath);
-            self.postMessage({ type: "loadVst_done" });
+            const state = await vstWebWorker.loadVst(data.vstArrayBuffer, data.pluginPath, data.saveState);
+            self.postMessage({ type: "load_done", data: { state, hasState: !!state } });
             break;
         case "playNote":
+            // console.log(data);
+
             await vstWebWorker.playNote(data.note, data.velocity, data.duration);
             self.postMessage({ type: "playNote_done" });
             break;
@@ -316,6 +328,14 @@ self.onmessage = async (event) => {
         case "idle_stop":
             vstWebWorker.stopIdle();
             self.postMessage({ type: "idle_stop_done" });
+            break;
+        // case "getState":
+        //     const state = await vstWebWorker.getState();
+        //     self.postMessage({ type: "state", data: state });
+        //     break;
+        case "loadState":
+            await vstWebWorker.loadStateFromObj(data.state);
+            self.postMessage({ type: "load_done", data: { hasState: false } });
             break;
         default:
             console.warn(`Unknown message type: ${type}`);

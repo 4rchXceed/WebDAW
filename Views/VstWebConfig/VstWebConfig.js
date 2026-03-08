@@ -1,3 +1,5 @@
+import { VstWorker } from "../../src/Audio/Vst.js";
+import PlayAudioStreamable from "../../VstWeb/src/PlayAudioStreamable.js";
 import { ViewTemplate } from "../Template/ViewTemplate.js";
 
 export class VstWebConfig extends ViewTemplate {
@@ -37,11 +39,11 @@ export class VstWebConfig extends ViewTemplate {
             <canvas class="vst-web-config-vm-canvas"></canvas>
         </div>
         <h1>VST Web Config</h1>
-        <h2>Run VST plugins with WebDAW.</h2>
+        <h2>Run 32bit VST2 plugins with WebDAW.</h2>
         <button id="vst-web-config-show-warning">Show warning popup again</button>
         <div class="vst-web-config-stats">
             <h3 class="vst-web-config-stats-title">Statistics:</h3>
-            <p>Storage: <span id="storage-usage">0 MB</span></p>
+            <p>Storage: <span id="storage-usage">Click to view</span></p>
             <div class="vst-web-config-mem">
                 <p>Memory Usage: <span id="memory-usage">0 MB</span>
                 <!-- <div value="0" id="vst-web-config-memory-progress" max="100"></div> -->
@@ -60,6 +62,7 @@ export class VstWebConfig extends ViewTemplate {
                     </select>
                     <br>
                     <button id="vst-web-config-start">Start</button>
+                    <button id="vst-web-config-delete">Delete</button>
                     <p id="vst-web-config-pluginselect-error vst-web-config-form-error">&ThinSpace;</p>
                     <div class="vst-web-config-select-loader"></div>
                 </div>
@@ -144,6 +147,7 @@ export class VstWebConfig extends ViewTemplate {
         this.vmInput = null;
         this.vmViewInterval = null;
         this.loaderSetup = null;
+        this.vmSelectDeleteButton = null;
         this.vmViewStopButton = null;
         this.vmView = null;
         this.setupSuccessElem = null;
@@ -166,8 +170,9 @@ export class VstWebConfig extends ViewTemplate {
         // this.memoryProgressElem = container.querySelector("#vst-web-config-memory-progress");
         this.pluginSelect = container.querySelector("#vst-web-config-plugin-select");
         this.stopButton = container.querySelector(".vst-web-config-stop button");
-        this.selectStartButton = container.querySelector(".vst-web-config-select-and-start button");
-        this.pluginSelectError = container.querySelector(".vst-web-config-pluginselect-error");
+        this.selectStartButton = container.querySelector(".vst-web-config-select-and-start #vst-web-config-start");
+        this.vmSelectDeleteButton = container.querySelector(".vst-web-config-select-and-start #vst-web-config-delete");
+        this.pluginSelectError = container.querySelector("#vst-web-config-pluginselect-error");
         this.vmViewCanvas = container.querySelector(".vst-web-config-vm-canvas");
         this.uploadInput = container.querySelector("#vst-upload");
         this.dllSelect = container.querySelector("#dll-select");
@@ -176,7 +181,7 @@ export class VstWebConfig extends ViewTemplate {
         this.beginProcessingButton = container.querySelector(".vst-web-config-vst button");
         this.saveLocallyCheckbox = container.querySelector("#vst-web-config-save-locally");
         this.vmViewCloseButton = container.querySelector(".vst-web-config-vm-view-close");
-        this.vmView = document.querySelector(".vst-web-config-view-vm");
+        this.vmView = container.querySelector(".vst-web-config-view-vm");
         this.pasteToVmButton = container.querySelector("#vst-web-config-paste-to-vm");
         this.vmInput = container.querySelector("#vst-web-config-vm-input");
         this.vmViewStopButton = container.querySelector(".vst-web-config-vm header button");
@@ -197,12 +202,26 @@ export class VstWebConfig extends ViewTemplate {
 
         this.selectStartButton.addEventListener("click", async () => {
             const pluginName = this.pluginSelect.value;
-            const pluginArrayBuffer = this.app__getVal(pluginName);
-            const pluginsIndex = Object.values(this.app__getVal("pluginsIndex").data);
-            const currentPlugin = pluginsIndex.find((v) => v.name === pluginName);
+            const pluginDatas = this.app__getVal(pluginName);
             this.selectLoader.style.display = "block";
-            await this.vstWeb().loadVst(pluginArrayBuffer, currentPlugin.dll);
+            this.vstWeb().loadState(pluginDatas.state);
             this.selectLoader.style.display = "none";
+        });
+
+        this.vmSelectDeleteButton.addEventListener("click", async () => {
+            const pluginName = this.pluginSelect.value;
+            if (pluginName === "") {
+                this.pluginSelectError.textContent = "Please select a plugin to delete";
+                return;
+            }
+            if (await window.confirmDialog(`Are you sure you want to delete the plugin "${pluginName}"? This action cannot be undone.`, "This will only delete the saved plugin data from your browser storage, it won't affect any files on your computer.")) {
+                const pluginsIndex = this.app__getVal("pluginsIndex") || { data: {}, i: 0 };
+                const currentPlugin = Object.keys(pluginsIndex.data).find(p => pluginsIndex.data[p].name === pluginName);
+                delete pluginsIndex.data[currentPlugin];
+                this.app__storeVal("pluginsIndex", pluginsIndex);
+                this.app__storeVal(pluginName, "deleted"); // Remove the actual plugin data -- TODO: Maybe implement some kind of cleanup system for old plugin data
+                this.updateLoadedPlugins();
+            }
         });
 
         this.warningAcknowledgedButton.addEventListener("click", () => {
@@ -229,20 +248,18 @@ export class VstWebConfig extends ViewTemplate {
 
             if (this.vstWeb()) {
                 this.vmViewInterval = setInterval(async () => {
-                    if (this.vstWeb().started) {
-                        const imgUri = await this.vstWeb().getScreen();
-                        const img = new Image();
-                        img.src = imgUri;
+                    const imgUri = this.vstWeb().getScreen();
+                    const img = new Image();
+                    img.src = imgUri;
 
-                        this.vmViewCanvas.getContext("2d").drawImage(img, 0, 0);
-                        if (this.vmViewCanvas.width !== this.vstWeb().canvas.width || this.vmViewCanvas.height !== this.vstWeb().canvas.height) {
-                            this.vmViewCanvas.width = this.vstWeb().canvas.width;
-                            this.vmViewCanvas.height = this.vstWeb().canvas.height;
-                        }
-                        // this.vmViewCanvas.width = img.b_w;
-                        // this.vmViewCanvas.height = img.b_h;
-                        // this.vmView.style.backgroundImage = `url(${img})`;
+                    this.vmViewCanvas.getContext("2d").drawImage(img, 0, 0);
+                    if (this.vmViewCanvas.width !== this.vstWeb().canvas.width || this.vmViewCanvas.height !== this.vstWeb().canvas.height) {
+                        this.vmViewCanvas.width = this.vstWeb().canvas.width;
+                        this.vmViewCanvas.height = this.vstWeb().canvas.height;
                     }
+                    // this.vmViewCanvas.width = img.b_w;
+                    // this.vmViewCanvas.height = img.b_h;
+                    // this.vmView.style.backgroundImage = `url(${img})`;
                 }, 100);
             }
             this.vmView.style.display = "flex";
@@ -294,6 +311,18 @@ export class VstWebConfig extends ViewTemplate {
             });
         });
 
+        this.stopButton.addEventListener("click", () => {
+            if (this.vstWeb()) {
+                if (this.vstWeb().isIdle) {
+                    this.vstWeb().stopIdle();
+                    this.stopButton.textContent = "Resume";
+                } else {
+                    this.vstWeb().idle();
+                    this.stopButton.textContent = "Pause";
+                }
+            }
+        });
+
         this.beginProcessingButton.addEventListener("click", async () => {
             const selectedDll = this.dllSelect.value;
             if (selectedDll === "") {
@@ -303,46 +332,66 @@ export class VstWebConfig extends ViewTemplate {
             this.vmSetupErrorElem.textContent = "";
             this.loaderSetup.style.display = "block";
             const arrayBuffer = await this.uploadInput.files[0].arrayBuffer();
+            const state = await this.vstWeb().loadVst(arrayBuffer, selectedDll, PlayAudioStreamable, this.saveLocallyCheckbox.checked);
             if (this.saveLocallyCheckbox.checked) {
                 const pluginsIndex = this.app__getVal("pluginsIndex") || { data: {}, i: 0 };
-                const name = `vstPlugin-${pluginsIndex.i++}`
+                const name = `vstPlugin-${pluginsIndex.i++}`;
+                // const state = this.vstWeb().getState();
                 pluginsIndex.data[this.uploadInput.files[0].name] = {
                     name: this.uploadInput.files[0].name,
-                    size: this.uploadInput.files[0].size,
+                    size: this.uploadInput.files[0].size + state.state.byteLength, //TODO: Check
                     dll: selectedDll,
-                    name: name
+                    name: name,
                 }
                 this.app__storeVal("pluginsIndex", pluginsIndex);
-                this.app__storeVal(name, arrayBuffer);
-                this.setupSuccessElem.textContent = "Plugin saved locally in your browser, loading...";
+                this.app__storeVal(name, { pluginData: arrayBuffer, state });
+                this.updateLoadedPlugins();
+                this.setupSuccessElem.textContent = "Plugin saved, for technicals reasons, you need to reload the page and select it from the dropdown";
+            } else {
+                this.setupSuccessElem.textContent = "VST plugin loaded successfully!";
             }
-            await this.vstWeb().loadVst(arrayBuffer, selectedDll);
             this.loaderSetup.style.display = "none";
-            this.setupSuccessElem.textContent = "VST plugin loaded successfully!";
         });
 
         this.disableAllCheckbox.checked = window.db.get("global/audio/vstWeb/enabled", "") === false ? true : false; // Default to enabled if not set
 
-        this.disableAllCheckbox.addEventListener("change", () => {
+        this.disableAllCheckbox.addEventListener("change", async () => {
             const disabled = this.disableAllCheckbox.checked;
-            if (disabled && window.confirmDialog("Are you sure you want to disable all VST Web features? !! You will need to refresh the page after disabling !!", "This will NOT delete data. You can re-enable features later if you change your mind.")) {
+            if (disabled && await window.confirmDialog("Are you sure you want to disable all VST Web features? !! You will need to refresh the page after disabling !!", "This will NOT delete data. You can re-enable features later if you change your mind.")) {
                 window.db.set("global/audio/vstWeb/enabled", false, "");
-            } else if (window.confirmDialog("Are you sure you want to re-enable VST Web features?", "This will allow you to use VST plugins again. !! You will need to refresh the page after enabling !!")) {
+            } else if (await window.confirmDialog("Are you sure you want to re-enable VST Web features?", "This will allow you to use VST plugins again. !! You will need to refresh the page after enabling !!")) {
                 window.db.set("global/audio/vstWeb/enabled", true, "");
             }
         });
 
-        this.updateStats();
-        setInterval(() => {
+        // this.updateStats();
+        this.storageUsageElem.addEventListener("click", () => {
             this.updateStats();
-        }, 10000);
+            setTimeout(() => {
+                this.storageUsageElem.textContent = "Click to view";
+            }, 5000);
+        });
 
         // Faster loop, because it needs less resources (doesn't need to check for memory/storage updates, just VST Web status)
         setInterval(() => {
             if (this.vstWeb()) {
+                this.stopButton.disabled = false;
+                if (this.vstWeb().isIdle) {
+                    this.stopButton.textContent = "Resume";
+                } else {
+                    this.stopButton.textContent = "Pause";
+                }
                 const status = this.vstWeb().ready ? "Ready" : (this.vstWeb().started ? "Started (no VST plugin loaded)" : "Not initialized");
                 this.vstWebStatusElem.textContent = status;
+            } else {
+                this.stopButton.disabled = true;
             }
+            if (!window.performance || !performance.memory) return;
+            const memoryInfo = performance.memory;
+            const usedMB = this.toHumanReadableSize(memoryInfo.usedJSHeapSize);
+            // const totalMB = (memoryInfo.totalJSHeapSize / (1024 * 1024)).toFixed(2);
+            this.memoryUsageElem.textContent = `${usedMB}`;
+
         }, 1000);
 
         this.updateLoadedPlugins();
@@ -446,11 +495,6 @@ export class VstWebConfig extends ViewTemplate {
 
 
     async updateStats() {
-        if (!window.performance || !performance.memory) return;
-        const memoryInfo = performance.memory;
-        const usedMB = this.toHumanReadableSize(memoryInfo.usedJSHeapSize);
-        // const totalMB = (memoryInfo.totalJSHeapSize / (1024 * 1024)).toFixed(2);
-        this.memoryUsageElem.textContent = `${usedMB}`;
         // const usagePercent = ((memoryInfo.usedJSHeapSize / memoryInfo.totalJSHeapSize) * 100).toFixed(2);
         // this.memoryProgressElem.value = usagePercent;
         // this.memoryProgressElem.style.background = `linear-gradient(to right, var(--accent) ${usagePercent}%, var(--secondary-bg) ${usagePercent}%)`;
@@ -488,8 +532,15 @@ export class VstWebConfig extends ViewTemplate {
         }
     }
 
+    /**
+     * @returns {VstWorker}
+     */
     vstWeb() {
         return this.app__getSharedPool("global/audio/vstWeb");
+    }
+
+    static canBeOpened() {
+        return window.webDaw.sharePools["global/audio/vstWeb"].started; // Only allow opening if the shared pool for VST Web is started, to prevent trying to do actions when the VST Web worker isn't initialized. 
     }
 }
 

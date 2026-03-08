@@ -1,6 +1,5 @@
-import PlayAudioStreamable from "../../VstWeb/src/PlayAudioStreamable.js";
+// import PlayAudioStreamable from "../../VstWeb/src/PlayAudioStreamable.js";
 
-// This WILL be a web worker
 export class VstWorker {
     VSTWEB_CONFIG_TEMPLATE = {
         state: {
@@ -48,10 +47,19 @@ export class VstWorker {
         this.vstWebConfig = config.vstWeb;
         this.worker = new Worker("./src/Audio/VstWorker.js", { type: "module" });
         this.v86Config = config.v86;
-        this.started = true; // TODO: Bugfix
+        this.started = false; // TODO: Bugfix
         this.ready = false;
-        this.stream = new PlayAudioStreamable();
         this.isIdle = false;
+        this.state = null;
+        this.loadedVsts = { "0": 0 }; // Unused. Structure: { vstId: channelId }
+    }
+
+    getBufferTime() {
+        return window.webDaw.audioManager.bufferTime || 320; // Default to 320ms if not set
+    }
+
+    setAudioBufferSize(sizeInMs) {
+        window.webDaw.audioManager.bufferTime = sizeInMs;
     }
 
     stopIdle() {
@@ -70,9 +78,15 @@ export class VstWorker {
         if (!event.data) return;
         const { type, data } = event.data;
         if (type === "audio") {
-            this.stream.write(data);
+            // TODO: implement, in c++ AND here, an way to distinguish different audio channels (for now we will just have one channel for everything)
+            window.webDaw.audioManager.channels[Object.keys(this.loadedVsts)[0]].write(data, "vstWebOutput");
         } else if (type === "imageData") {
             this.canvas.getContext("2d").putImageData(data.imageData, data.x, data.y, data.dx, data.dy, data.b_w, data.b_h);
+        } else if (type === "load_done") {
+            this.ready = true;
+            if (data.hasState) {
+                this.state = data.state;
+            }
         }
     }
 
@@ -93,19 +107,14 @@ export class VstWorker {
     }
 
 
-    async loadVst(vstArrayBuffer, pluginPath, idle = true) {
+    async loadVst(vstArrayBuffer, pluginPath, idle = true, saveState = false) {
         if (!this.started) {
             window.error(false, "VstWorker: Cannot load VST plugin before starting the VM. Call init() first.");
         }
-        this.worker.postMessage({ type: "loadVst", data: { vstArrayBuffer, pluginPath } });
-        await new Promise(resolve => {
-            this.worker.onmessage = (event) => {
-                if (event.data.type === "loadVst_done") {
-                    window.log("VstWorker: VST plugin loaded and ready");
-                    resolve();
-                }
-            };
-        });
+        this.worker.postMessage({ type: "loadVst", data: { vstArrayBuffer, pluginPath, saveState } });
+        while (!this.ready) {
+            await new Promise((r) => setTimeout(r, 100));
+        }
         this.worker.onmessage = (event) => {
             this.handleMessage(event);
         }
@@ -113,23 +122,26 @@ export class VstWorker {
         if (idle) {
             this.idle();
         }
+        return this.state; // Return the state if it was loaded
     }
 
-    async playNote(note, velocity, duration) {
+    async playNote(note, velocity, duration, channel = 0) {
         if (!this.ready) {
             window.error(false, "VstWorker: Cannot play note before loading VST plugin. Call loadVst() first.");
         }
+
+        // TODO: Implement channels in the worker and use the channel parameter to specify which channel to play the note on
         this.worker.postMessage({ type: "playNote", data: { note, velocity, duration } });
     }
 
-    async noteOn(note, velocity) {
+    async noteOn(note, velocity, channel = 0) {
         if (!this.ready) {
             window.error(false, "VstWorker: Cannot turn note on before loading VST plugin. Call loadVst() first.");
         }
         this.worker.postMessage({ type: "noteOn", data: { note, velocity } });
     }
 
-    async noteOff(note, velocity) {
+    async noteOff(note, velocity, channel = 0) {
         if (!this.ready) {
             window.error(false, "VstWorker: Cannot turn note off before loading VST plugin. Call loadVst() first.");
         }
@@ -152,7 +164,15 @@ export class VstWorker {
         return this.canvas.toDataURL();
     }
 
-    async wait(delay) {
+    loadState(state) {
+        if (!this.started) {
+            window.error(false, "VstWorker: Cannot load state before starting the VM. Call init() first.");
+        }
+        this.worker.postMessage({ type: "loadState", data: { state } });
+        this.ready = true;
+    }
+
+    wait(delay) {
         if (!this.ready) {
             window.error(false, "VstWorker: Cannot wait before loading VST plugin. Call loadVst() first.");
         }

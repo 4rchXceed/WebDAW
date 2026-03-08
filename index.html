@@ -16,6 +16,15 @@
     <button id="initVst">Run (init) VstWeb</button>
     <button id="openVstConfig">Open VST config</button>
     <button id="openMidiNotes">Open MidiNotes</button>
+    <button id="openSongParts">Open SongParts</button>
+    <div class="qs">
+        <h2>Quick settings:</h2>
+        <div>
+            <label for="qs-audio-buffer">VstWeb audio buffer (in ms): </label>
+            <input type="number" id="qs-audio-buffer">
+            <button id="qs-audio-buffer-btn">Update</button>
+        </div>
+    </div>
     <div id="windows"></div>
     <div id="vst-web-hidden-container" class="hidden"></div>
     <script type="module" src="./src/main.js"></script>

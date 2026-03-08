@@ -1,0 +1,145 @@
+:root {
+    --song-part-width: 100px;
+    --song-parts-scroll: 0px;
+}
+
+.song-parts-instrument-container {
+    background-color: var(--main-bg);
+    width: 100%;
+    height: 100%;
+    color: white;
+    box-sizing: border-box;
+    padding: 20px;
+    box-shadow: inset 0 0 0 10px var(--secondary-bg);
+    overflow-y: auto;
+}
+
+.song-parts-instrument-container>ul>li {
+    list-style-type: none;
+}
+
+.song-parts-instrument-container>ul>li>h2 {
+    text-align: center;
+}
+
+.song-parts-instrument {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px;
+    justify-content: flex-start;
+    border-bottom: 1px solid var(--secondary-bg);
+}
+
+.song-parts-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.2em;
+    margin: 0;
+    /* flex-grow: 1; */
+}
+
+.song-parts-header>img {
+    border-radius: 15px;
+}
+
+.song-parts-instrument-edit,
+.song-parts-instrument-remove {
+    cursor: pointer;
+    font-size: 0.8em;
+    opacity: 0.7;
+}
+
+.song-part-parts {
+    user-select: none;
+    display: flex;
+    gap: 5px;
+    flex-grow: 1;
+    margin-left: 60px;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 0;
+    width: 100%;
+    height: 40px;
+    background-image:
+        repeating-linear-gradient(to right,
+            var(--accent) 0px,
+            var(--accent) 1px,
+            transparent 1px,
+            transparent var(--song-part-width, 20px));
+    position: relative;
+    background-position: var(--song-parts-scroll, 0px) 0;
+}
+
+.song-part-part {
+    list-style-type: none;
+    background-color: var(--secondary-bg);
+    padding: 5px 10px;
+    border-radius: 5px;
+    position: absolute;
+    top: 0;
+    cursor: move;
+    font-size: 0.9em;
+    height: 40px;
+    overflow: hidden;
+    box-sizing: border-box;
+    text-overflow: ellipsis;
+    text-wrap: nowrap;
+    /* width will be set in JS */
+}
+
+.song-part-resize {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 5%;
+    height: 100%;
+    cursor: ew-resize;
+}
+
+.song-part-empty {
+    list-style-type: none;
+    background-color: transparent;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 0.9em;
+    color: var(--secondary-bg);
+    border: 1px dashed var(--secondary-bg);
+    /* width will be set in JS */
+}
+
+.song-parts-instrument-name {
+    background-color: transparent;
+    border: none;
+    color: white;
+    font-size: 1em;
+    width: 150px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.song-parts-instrument-name:focus {
+    outline: none;
+}
+
+.song-parts-instrument-type {
+    width: 100px;
+}
+
+.song-parts-selected {
+    background-color: var(--accent);
+}
+
+.song-parts-instrument-gui {
+    margin-top: 10px;
+    border: 1px solid var(--secondary-bg);
+    min-height: 100px;
+    min-width: 300px;
+}
+
+.song-parts-instrument-selected {
+    border: 2px solid var(--accent);
+    box-sizing: border-box;
+}

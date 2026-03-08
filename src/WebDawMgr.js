@@ -1,4 +1,8 @@
-import { DB } from "./db.js";
+import { NoneInstrument } from "./API/Builtin/NoneInstrument.js";
+import { VstInstrument } from "./API/Builtin/VstInstrument.js";
+import { AudioMgr } from "./Audio/AudioMgr.js";
+import { DB } from "./Db.js";
+import { Project } from "./Project.js";
 
 export class WebDawMgr {
     static log(...args) {
@@ -10,7 +14,7 @@ export class WebDawMgr {
         alert(`${title}\n\n${message}`);
     }
 
-    static confirm(title, message) {
+    static async confirm(title, message) {
         return confirm(`${title}\n\n${message}`);
     }
 
@@ -29,7 +33,31 @@ export class WebDawMgr {
         this.db = db;
         this.sharePools = {};
         this.openedViews = {};
+        this.__idGenCounter = 0;
+        this.currentView = null;
+        // Storage for global registry of effects and instruments
+        this.globalRegistry = {
+            effects: {},
+            instruments: {
+                "vst-95975": {
+                    class: VstInstrument,
+                    name: "VST Instrument loader",
+                },
+                "none-25036": {
+                    class: NoneInstrument,
+                    name: "Default empty instrument (no sound)",
+                },
+            },
+        }
+        this.audioManager = null;
+        this.currentPart = {
+            instrumentId: null,
+            partId: null,
+        };
+        this.project = new Project();
+        this.audioManager = new AudioMgr();
     }
+
     static async init() {
         if (!window.webDaw) {
             window.log = WebDawMgr.log; // Expose the log function to the global scope for easy logging
@@ -39,7 +67,7 @@ export class WebDawMgr {
             window.confirmDialog = WebDawMgr.confirm;
             const db = new DB();
             await db.init();
-            window.db = db;
+            window.db = db; // Faster access than window.webDaw.db
             const webDaw = new WebDawMgr(db);
             window.webDaw = webDaw;
             this.log("WebDawMgr initialized");
@@ -49,8 +77,11 @@ export class WebDawMgr {
         }
     }
 
-    app__registerView(viewName, viewInstance) {
-        this.openedViews[viewName] = viewInstance;
+    app__registerView(viewName, viewInstance, winboxInstance) {
+        this.openedViews[viewName] = {
+            view: viewInstance,
+            element: winboxInstance.window,
+        };
     }
 
     app__getView(viewName) {
@@ -58,5 +89,10 @@ export class WebDawMgr {
     }
     app__unregisterView(viewName) {
         delete this.openedViews[viewName];
+    }
+
+    app__registerPlugin(zip) {
+        // TODO: Implement unzipping and plugin registration logic
+        throw new Error("Not implemented yet");
     }
 }
