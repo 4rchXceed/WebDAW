@@ -1,1 +1,1 @@
-cloc src Views VstWeb/examples VstWeb/src VstWeb/source_cpp/main.cpp
+cloc src Views VstWeb/src VstWeb/source_cpp/main.cpp

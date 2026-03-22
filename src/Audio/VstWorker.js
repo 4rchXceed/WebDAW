@@ -207,6 +207,8 @@ class VstWebWorker {
         this.vstWeb = null;
         this.htmlElement = new FakeDivElement(); // Fake container
         globalThis.document = new FakeDocument(new FakeDivElement()); // Needs a parent
+        this.lock = 0; // Simple lock to prevent 2 notes from being played at the same time, which can cause issues with the vsthost.
+        this.LOCK_TIME = 10; // Time in ms to wait before releasing the lock, should be enough to let the vsthost process the note on/off message.
     }
 
     async init(vstWebConfig, v86Config, debug = true) {
@@ -245,16 +247,28 @@ class VstWebWorker {
     }
 
     async playNote(note, velocity, duration) {
+        if (this.lock > 0) {
+            await new Promise(resolve => setTimeout(resolve, this.LOCK_TIME));
+        }
+        this.lock++;
         this.vstWeb.sendNote(`${note}:1${velocity}`);
         await new Promise(resolve => setTimeout(resolve, duration));
         this.vstWeb.sendNote(`${note}:0${velocity}`);
     }
 
     async noteOn(note, velocity) {
+        if (this.lock > 0) {
+            await new Promise(resolve => setTimeout(resolve, this.LOCK_TIME));
+        }
+        this.lock++;
         this.vstWeb.sendNote(`${note}:1${velocity}`);
     }
 
     async noteOff(note, velocity) {
+        if (this.lock > 0) {
+            await new Promise(resolve => setTimeout(resolve, this.LOCK_TIME));
+        }
+        this.lock++;
         this.vstWeb.sendNote(`${note}:0${velocity}`);
     }
 

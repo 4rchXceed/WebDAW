@@ -1,7 +1,12 @@
+import { ChorusEffect } from "./API/Builtin/Effects/Chorus.js";
+import { DelayEffect } from "./API/Builtin/Effects/Delay.js";
+import { GainEffect } from "./API/Builtin/Effects/Gain.js";
 import { NoneInstrument } from "./API/Builtin/NoneInstrument.js";
+import { NotePartPlayer } from "./API/Builtin/NotePartPlayer.js";
 import { VstInstrument } from "./API/Builtin/VstInstrument.js";
 import { AudioMgr } from "./Audio/AudioMgr.js";
 import { DB } from "./Db.js";
+import { EventSystem } from "./Events.js";
 import { Project } from "./Project.js";
 
 export class WebDawMgr {
@@ -37,7 +42,23 @@ export class WebDawMgr {
         this.currentView = null;
         // Storage for global registry of effects and instruments
         this.globalRegistry = {
-            effects: {},
+            partPlayers: {
+                "notes-creator-notes-977701": NotePartPlayer,
+            }, // {dataType: PartPlayerClass}
+            effects: {
+                "builtin-gain-894695": {
+                    class: GainEffect,
+                    name: "Gain",
+                },
+                "builtin-chorus-611417": {
+                    class: ChorusEffect,
+                    name: "Chorus",
+                },
+                "builtin-delay-758046": {
+                    class: DelayEffect,
+                    name: "Delay",
+                },
+            },
             instruments: {
                 "vst-95975": {
                     class: VstInstrument,
@@ -56,6 +77,7 @@ export class WebDawMgr {
         };
         this.project = new Project();
         this.audioManager = new AudioMgr();
+        this.eventSystem = new EventSystem();
     }
 
     static async init() {
@@ -70,6 +92,7 @@ export class WebDawMgr {
             window.db = db; // Faster access than window.webDaw.db
             const webDaw = new WebDawMgr(db);
             window.webDaw = webDaw;
+            webDaw.audioManager.init(); // Initialize the audio manager (create audio context, etc...)
             this.log("WebDawMgr initialized");
             return webDaw;
         } else {

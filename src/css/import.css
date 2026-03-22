@@ -2,6 +2,7 @@
 @import "../../Views/Notes/css/notes-creator.css";
 @import "../../Views/VstWebConfig/css/vst-web-config.css";
 @import "../../Views/Song/css/song-parts.css";
+@import "../../Views/Mixer/css/mixer.css";
 @import "./globals.css";
 
 /* Main rules */

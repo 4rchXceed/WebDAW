@@ -43,6 +43,19 @@ WebDawMgr.init().then(async () => {
     document.getElementById("openSongParts").onclick = () => {
         windowManager.openVMView("SongParts");
     };
+    document.getElementById("openMixer").onclick = () => {
+        windowManager.openVMView("MixerView");
+    };
+
+    document.getElementById("save").onclick = () => {
+        window.webDaw.audioManager.save();
+        window.webDaw.project.save();
+    }
+    document.getElementById("load").onclick = () => {
+        window.webDaw.project.load();
+        window.webDaw.audioManager.load();
+        window.webDaw.project.load(); // Idk why but I need to load it 2 times
+    }
 
 
     // const vstWebConfig = new VstWebConfig();

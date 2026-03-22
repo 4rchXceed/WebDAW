@@ -31,6 +31,14 @@ class EffectsAudioStreamable extends PlayAudioStreamable {
         });
     }
 
+    connectEffect(effect) {
+        effect.connect(this.masterGain, this.audioContext);
+    }
+
+    disconnectEffect(effect) {
+        effect.disconnect();
+    }
+
     /**
      * Write a wav file (or any other audio format) to the stream. This will decode the wav file and then call write() with the decoded audio data.
      * @param {ArrayBuffer} wavArrayBuffer 
@@ -112,6 +120,12 @@ class EffectsAudioStreamable extends PlayAudioStreamable {
             this.scheduledUntil = startAt + chunkDuration;
         } catch (err) {
             console.error("[VstWeb][audio] error processing audio chunk:", err);
+        }
+    }
+
+    tearDown() {
+        if (this.audioContext) {
+            this.audioContext.close();
         }
     }
 }

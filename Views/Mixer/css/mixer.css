@@ -1,0 +1,79 @@
+.mixer-main {
+    background-color: var(--main-bg);
+    width: 100%;
+    height: 100%;
+    color: white;
+    box-sizing: border-box;
+    padding: 20px;
+    box-shadow: inset 0 0 0 10px var(--secondary-bg);
+    overflow-y: auto;
+}
+
+.mixer-channel {
+    display: flex;
+    width: 100%;
+    margin-bottom: 20px;
+    padding: 10px;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 20px;
+    border-bottom: 2px dotted var(--secondary-bg);
+}
+
+.mixer-channel:first-child {
+    border-top: 2px dotted var(--secondary-bg);
+}
+
+.mixer-options {
+    display: flex;
+    align-items: center;
+    border: 2px solid var(--secondary-bg);
+    /* flex-grow: 1; */
+    /* width: max-content; */
+    padding: 5px;
+}
+
+.mixer-channel-name {
+    width: 200px;
+    overflow: hidden;
+    text-wrap: nowrap;
+    text-overflow: ellipsis;
+}
+
+.mixer-effect {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    border: 2px solid var(--secondary-bg);
+    padding: 5px;
+}
+
+.mixer-effect-remove {
+    margin-left: 10px;
+    cursor: pointer;
+}
+
+/* .mixer-effect-edit-name {
+    margin-right: 10px;
+    padding-right: 10px;
+    margin-left: 10px;
+    border-right: 2px solid var(--secondary-bg);
+} */
+
+.mixer-effect-settings {
+    margin-top: 10px;
+    border: 1px solid var(--secondary-bg);
+    min-height: 100px;
+    min-width: 300px;
+}
+
+.mixer-add-channel {
+    width: max-content;
+}
+
+.mixer-add-effect-input-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}

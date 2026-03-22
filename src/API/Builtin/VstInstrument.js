@@ -11,6 +11,11 @@ export class VstInstrument extends InstrumentBase {
         this.instrumentId = "vst-95975";
     }
 
+    updateChannel(channel) {
+        super.updateChannel(channel);
+        this.vstWeb().loadedVsts[this.currentVstId] = channel; // Update the channel of the currently loaded VST in the VstWorker, so that it knows where to send the audio data when play() is called
+    }
+
     getLoadedVsts() {
         // TODO: When multi-vst support is implemented, this should return an array of loaded VSTs instead of just the first one, these are VSTIds
         return { "0": "Default" };
@@ -46,10 +51,12 @@ export class VstInstrument extends InstrumentBase {
     }
 
     registerEvents() {
+        // this.updateChannel(this.currentChannel); // Default to channel 0, until the user selects a VST
         this.loadedVstsSelect.onchange = (e) => {
             const vstId = e.target.value;
             if (!vstId) return; // No VST selected
             this.currentVstId = vstId;
+            this.updateChannel(this.currentChannel); // Sync with AudioManager
         };
     }
 

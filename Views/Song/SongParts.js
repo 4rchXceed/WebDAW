@@ -56,12 +56,12 @@ class Instrument {
         this.name = name;
         this.partsContainer = null;
         this.parts = [];
-        this.pixelsPerBeat = 1;
+        this.pixelsPerBeat = 10;
         this.isMouseDown = false;
         this.currentElement = null;
         this.isDragging = false;
-        this.gridSnapInterval = 50;
-        this.snapToGridMin = 10;
+        this.gridSnapInterval = 10; // in beats
+        this.snapToGridMin = 1;
         this.channelSpanElement = null;
         this.instrumentId = instrumentId;
         this.instrumentTypeSelect = null;
@@ -77,8 +77,8 @@ class Instrument {
         return px / this.pixelsPerBeat;
     }
 
-    isPartOverlapping(startTime, duration, excludePart = null) {
-        return this.parts.some(p => p !== excludePart && !(p.startTime + p.duration <= startTime || p.startTime >= startTime + duration));
+    isPartValid(startTime, duration, excludePart = null) {
+        return startTime < 0 || startTime + duration > this.songParts.songLength || this.parts.some(p => p !== excludePart && !(p.startTime + p.duration <= startTime || p.startTime >= startTime + duration));
     }
 
     remove(mod = true) {
@@ -115,6 +115,8 @@ class Instrument {
         this.element.querySelector(".song-parts-instrument-remove").addEventListener("click", () => {
             this.remove();
         });
+        this.partsScroll = this.element.querySelector(".song-part-parts-container");
+
         this.instrumentNameInput.addEventListener("blur", () => {
             const input = this.instrumentNameInput;
             input.readOnly = true;
@@ -126,17 +128,18 @@ class Instrument {
             }
         });
         this.partsContainer = this.element.querySelector(".song-part-parts");
-        this.partsContainer.addEventListener("mousedown", (e) => {
+        document.addEventListener("mousedown", (e) => {
+            if (!this.partsContainer.contains(e.target)) return; // only start interactions if the click is within this instrument's element
             if (e.button === 0) {
                 if (e.target === this.partsContainer) { // only start dragging if the container itself is clicked, not an existing part
                     const partElement = e.target;
-                    const startX = e.clientX;
+                    const startX = e.clientX + this.partsScroll.scrollLeft;
                     const initialLeft = partElement.offsetLeft;
                     this.isMouseDown = true;
-                    const part = this.addPart("New Part", this.convertPxToBeats(startX - initialLeft), 40); // default duration of 4 beats
+                    const part = this.addPart("New Part", this.convertPxToBeats(startX - initialLeft), this.convertBeatsToPx(1)); // default duration of 1 beats
                     this.currentElement = part;
                     this.songParts.modified();
-                    if (this.isPartOverlapping(part.startTime, part.duration, part)) { // if the new part is overlapping with existing parts, remove it immediately
+                    if (this.isPartValid(part.startTime, part.duration, part)) { // if the new part is overlapping with existing parts, remove it immediately
                         this.parts = this.parts.filter(p => p !== part);
                         this.partsContainer.removeChild(part.element);
                         this.currentElement = null;
@@ -178,14 +181,22 @@ class Instrument {
             }
         });
         this.partsContainer = this.element.querySelector(".song-part-parts");
-        this.partsContainer.addEventListener("scroll", () => {
-            this.partsContainer.style.setProperty("--song-parts-scroll", `${-this.partsContainer.scrollLeft}px`); // for the scrollbar shadow effect
+        this.partsScroll.addEventListener("scroll", () => {
+            this.songParts.instruments.forEach(instrument => {
+                if (instrument !== this) {
+                    instrument.partsScroll.scroll({
+                        left: this.partsScroll.scrollLeft,
+                        behavior: "auto"
+                    }); // sync scroll with other instruments
+                }
+            });
+            this.songParts.updatePlayerBar(this.partsScroll.offsetLeft - this.partsScroll.scrollLeft + this.convertBeatsToPx(this.songParts.playPosition)); // update playbar position on scroll
         });
         document.addEventListener("mousemove", (e) => {
             if (this.isMouseDown && this.currentElement) {
                 const project = this.songParts.app__getProject();
                 const currentPartData = project.songData.instrumentData[this.instrumentId].parts[this.currentElement.startTime];
-                const newLeft = this.convertPxToBeats(e.clientX - this.partsContainer.getBoundingClientRect().left + this.partsContainer.scrollLeft);
+                const newLeft = this.convertPxToBeats(e.clientX - this.partsScroll.getBoundingClientRect().left + this.partsScroll.scrollLeft);
                 if (newLeft <= 0) return; // prevent dragging before the start of the container
                 const lastDuration = this.currentElement.duration;
                 if (newLeft % this.gridSnapInterval <= this.snapToGridMin && !e.ctrlKey) { // Ctrl key overrides snapping
@@ -194,17 +205,17 @@ class Instrument {
                     this.currentElement.duration = newLeft - this.currentElement.startTime;
                 }
 
-                if (this.isPartOverlapping(this.currentElement.startTime, this.currentElement.duration, this.currentElement)) {
+                if (this.isPartValid(this.currentElement.startTime, this.currentElement.duration, this.currentElement)) {
                     this.currentElement.duration = lastDuration; // revert to last valid duration if overlapping
                 } else {
                     this.currentElement.updatePosition();
+                    currentPartData.duration = this.currentElement.duration; // update the part data with the new duration
                 }
-                currentPartData.duration = this.currentElement.duration; // update the part data with the new duration
             } else if (this.isDragging && this.currentElement) {
                 const project = this.songParts.app__getProject();
                 const currentPartData = project.songData.instrumentData[this.instrumentId].parts[this.currentElement.startTime];
 
-                const newLeft = this.convertPxToBeats(e.clientX - this.partsContainer.getBoundingClientRect().left + this.partsContainer.scrollLeft);
+                const newLeft = this.convertPxToBeats(e.clientX - this.partsScroll.getBoundingClientRect().left + this.partsScroll.scrollLeft);
                 if (newLeft < 0) return; // prevent dragging before the start of the container or over existing parts
                 const lastStartTime = this.currentElement.startTime;
                 if (newLeft % this.gridSnapInterval <= this.snapToGridMin && !e.ctrlKey) { // Ctrl key overrides snapping
@@ -213,16 +224,20 @@ class Instrument {
                     this.currentElement.startTime = newLeft;
                 }
 
-                if (this.isPartOverlapping(newLeft, this.currentElement.duration, this.currentElement)) {
+
+                if (this.isPartValid(newLeft, this.currentElement.duration, this.currentElement)) {
                     this.currentElement.startTime = lastStartTime; // revert to last valid position if overlapping
                 } else {
                     this.currentElement.updatePosition();
+                    currentPartData.startTime = this.currentElement.startTime; // update the part data with the new start time
+
+                    delete project.songData.instrumentData[this.instrumentId].parts[lastStartTime]; // remove the old part data from the project
+                    project.songData.instrumentData[this.instrumentId].parts[this.currentElement.startTime] = currentPartData; // update the part data with the new start time
+                    if (this.currentElement.isSelected) {
+                        this.songParts.app__setCurrentPart(this.instrumentId, this.currentElement.startTime); // update the current part in the app if the moved part is currently selected
+                    }
                 }
-                delete project.songData.instrumentData[this.instrumentId].parts[lastStartTime]; // remove the old part data from the project
-                project.songData.instrumentData[this.instrumentId].parts[this.currentElement.startTime] = currentPartData; // update the part data with the new start time
-                if (this.currentElement.isSelected) {
-                    this.songParts.app__setCurrentPart(this.instrumentId, this.currentElement.startTime); // update the current part in the app if the moved part is currently selected
-                }
+
 
             }
         });
@@ -263,8 +278,9 @@ class Instrument {
                 this.songParts.modified();
             }
         });
+        this.partsContainer.querySelector(".song-parts-song-length").style.left = `${this.convertBeatsToPx(this.songParts.songLength)}px`;
+        this.partsContainer.style.width = `${this.convertBeatsToPx(this.songParts.songLength)}px`;
     }
-
     updateInstrumentOptions() {
         const instruments = window.webDaw.globalRegistry.instruments;
         for (const instrumentId in instruments) {
@@ -279,14 +295,16 @@ class Instrument {
         }
     }
 
-    addPart(name, startTime, duration) {
+    addPart(name, startTime, duration, data = null, dataType = "raw") {
         const project = this.songParts.app__getProject();
         project.songData.instrumentData[this.instrumentId].parts[startTime] = {
             startTime,
             duration,
             name,
-            data: {}
+            data,
+            dataType
         };
+
         const newPart = new SongPart(name, duration, startTime, this);
         newPart.gen();
         this.parts.push(newPart);
@@ -295,6 +313,7 @@ class Instrument {
 
     save() {
         const instrument = this.songParts.app__getAudioManager().instruments[this.instrumentId] || null;
+
         return {
             name: this.name,
             instrument: {
@@ -305,7 +324,9 @@ class Instrument {
             parts: this.parts.map(part => ({
                 name: part.name,
                 startTime: part.startTime,
-                duration: part.duration
+                duration: part.duration,
+                data: this.songParts.app__getProject().songData.instrumentData[this.instrumentId].parts[part.startTime].data || null,
+                dataType: this.songParts.app__getProject().songData.instrumentData[this.instrumentId].parts[part.startTime].dataType || null
             }))
         };
     }
@@ -313,6 +334,7 @@ class Instrument {
 
 export class SongParts extends ViewTemplate {
     HTML_TEMPLATE = `
+    <div class="song-part-playerbar"></div>
     <ul>
         <li>
             <h2> Song Parts</h2>
@@ -320,7 +342,7 @@ export class SongParts extends ViewTemplate {
         </li>
         <li class="song-parts-instrument">
             <button class="song-parts-add-instrument">+</button>
-            </li>
+        </li>
     </ul>
     <h3>Instrument Settings</h3>
     <div class="song-parts-instrument-gui">Double click an instrument's name to load their settings</div>
@@ -331,7 +353,11 @@ export class SongParts extends ViewTemplate {
                             class="song-parts-instrument-name no-global-style" readonly value="Piano"><select class="song-parts-instrument-type"></select><span
                                 class="song-parts-instrument-edit">🖉</span><span
                                 class="song-parts-instrument-remove">🗑️</span></h2>
-                            <ul class="song-part-parts"></ul>
+                            <div class="song-part-parts-container">
+                                <ul class="song-part-parts">
+                                    <li class="song-parts-song-length"></li>
+                                </ul>
+                            </div>
                         </li>`;
     DEFAULT_INSTRUMENT_ID = "none-25036";
 
@@ -339,7 +365,8 @@ export class SongParts extends ViewTemplate {
         super();
         this.addPartBtn = null;
         this.instrumentsContainer = null;
-        this.bpm = 120; // TODO: get this from the song data
+        this.bpm = 120;
+        this.songLength = 20; // In beats
         this.instruments = [];
         this.undoBuffer = [[]];
         this.instrumentGuiContainer = null;
@@ -347,7 +374,19 @@ export class SongParts extends ViewTemplate {
         this.lastRedoUndo = 0;
         this.maxUndoBuffer = 100;
         this.openedUIInstrument = null;
+        this.isPlaying = false;
+        this.playPosition = 0;
         this.undoRedoSpaceWarning = 1000; // To avoid performance issues, we show a warning if the user tries to spam undo/redo
+        const songData = window.webDaw.project.songData;
+        if (songData) {
+            this.bpm = songData.tempo || this.bpm;
+            this.songLength = songData.songLength || this.songLength;
+        }
+        this.updatePlayerbarInerval = null;
+        this.playbackStartedEvent = null;
+        this.isDraggingPlaybar = false;
+        this.playbackStoppedEvent = null;
+        this.playbarHasBeenInit = false;
     }
 
     openGUI(instrument) {
@@ -370,20 +409,87 @@ export class SongParts extends ViewTemplate {
         this.addPartBtn = container.querySelector(".song-parts-add-instrument");
         this.instrumentsContainer = container.querySelector("ul");
         this.instrumentGuiContainer = container.querySelector(".song-parts-instrument-gui");
+        this.playbar = container.querySelector(".song-part-playerbar");
+    }
+
+    updatePlayerBar(x) {
+        this.playbar.style.top = `${this.instruments[0].partsScroll.offsetTop}px`;
+        this.playbar.style.height = `${this.instruments[0].element.offsetHeight * this.instruments.length}px`;
+        if (x > this.instruments[0].partsScroll.offsetLeft) {
+            this.playbar.style.left = `${x}px`;
+        } else {
+            this.playbar.style.left = `${this.instruments[0].partsScroll.offsetLeft}px`;
+        }
     }
 
     registerEvents() {
-        this.addPartBtn.addEventListener("click", (e) => {
+        this.playbackStartedEvent = window.webDaw.eventSystem.registerEventListener("playbackStarted", () => {
+            this.updatePlayerbarInerval = setInterval(() => {
+                const currentTime = window.webDaw.audioManager.currentBeat;
+                if (this.instruments[0]) {
+                    const x = this.instruments[0].partsScroll.offsetLeft - this.instruments[0].partsScroll.scrollLeft + this.instruments[0].convertBeatsToPx(currentTime);
+                    this.playPosition = currentTime;
+                    this.updatePlayerBar(x);
+                }
+            }, 50);
+        });
+        this.playbackStoppedEvent = window.webDaw.eventSystem.registerEventListener("playbackStopped", () => {
+            if (this.updatePlayerbarInerval) {
+                clearInterval(this.updatePlayerbarInerval);
+            }
+            this.playPosition = 0;
+            if (this.instruments[0]) {
+                const x = this.instruments[0].partsScroll.offsetLeft - this.instruments[0].partsScroll.scrollLeft + this.instruments[0].convertBeatsToPx(this.playPosition);
+                this.updatePlayerBar(x);
+            }
+        });
+        this.addPartBtn.addEventListener("click", () => {
             this.addInstrument("New Instrument");
             this.modified();
         });
+        this.playbar.addEventListener("mousedown", () => {
+            this.isDraggingPlaybar = true;
+            window.webDaw.audioManager.pauseSong();
+        });
+        document.addEventListener("mousemove", (e) => {
+            if (this.isDraggingPlaybar) {
+                const newPlayPosition = this.instruments[0].convertPxToBeats(e.clientX - this.instruments[0].partsScroll.offsetLeft + this.instruments[0].partsScroll.scrollLeft);
+
+                if (newPlayPosition >= 0 && newPlayPosition <= this.songLength) {
+                    this.playPosition = newPlayPosition;
+
+                    this.updatePlayerBar(e.clientX);
+                }
+            }
+        });
+        document.addEventListener("mouseup", () => {
+            if (this.isDraggingPlaybar) {
+                this.isDraggingPlaybar = false;
+            }
+        });
         document.addEventListener("keydown", (e) => {
-            if (this.app__isFocused()) {
+            if (this.app__isFocused() && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") { // prevent interfering with typing
                 if (e.key === "z" && (e.ctrlKey || e.metaKey)) {
                     this.undo();
                 } else if (e.key === "y" && (e.ctrlKey || e.metaKey)) {
                     this.redo();
+                } else if (e.key === " ") {
+                    if (this.isPlaying) {
+                        window.webDaw.audioManager.pauseSong();
+                    } else {
+                        window.webDaw.audioManager.playSong(this.playPosition);
+                    }
+                    this.isPlaying = !this.isPlaying;
                 }
+            }
+        });
+        const project = window.webDaw.project;
+        if (project.songData.instrumentData) {
+            const datas = this.generateLoadData();
+            this.load(datas, true);
+        }
+        document.addEventListener("keydown", () => {
+            if (this.app__isFocused()) {
             }
         });
     }
@@ -391,8 +497,13 @@ export class SongParts extends ViewTemplate {
     /**
      * THIS SHOULD BE CALLED ONLY WHEN IT'S A USER-TRIGGERED CHANGE, NOT WHEN LOADING A PROJECT OR UNDOING/REDOING, ...
      */
-    async addInstrument(name, instrumentId = this.DEFAULT_INSTRUMENT_ID, channel = 0, presets = null) {
-        const id = await this.app__getAudioManager().loadInstrument(instrumentId, channel, name);
+    async addInstrument(name, instrumentId = this.DEFAULT_INSTRUMENT_ID, channel = 0, presets = null, preDefinedId = null) {
+        let id;
+        if (!preDefinedId) {
+            id = await this.app__getAudioManager().loadInstrument(instrumentId, channel, name);
+        } else {
+            id = preDefinedId; // Load the instrument with the predefined id
+        }
         const newInstrument = new Instrument(name, id, this);
         newInstrument.songParts = this;
         if (presets) {
@@ -400,6 +511,10 @@ export class SongParts extends ViewTemplate {
         }
         newInstrument.gen();
         this.instruments.push(newInstrument);
+        if (!this.playbarHasBeenInit) {
+            this.updatePlayerBar(this.instruments[0].partsScroll.offsetLeft);
+            this.playbarHasBeenInit = true;
+        }
         return newInstrument;
     }
 
@@ -410,13 +525,41 @@ export class SongParts extends ViewTemplate {
         return saveData;
     }
 
-    async load(data) {
+    generateLoadData() {
+        const project = window.webDaw.project;
+
+        const instruments = [];
+        for (const instrumentId in project.songData.instrumentData) {
+            const instrumentData = project.songData.instrumentData[instrumentId];
+            const parts = Object.values(instrumentData.parts);
+
+            instruments.push({
+                name: instrumentData.name,
+                instrumentId: instrumentId, // The instrument saving / loading is managed by the AudioManager itself, so we just need to give it an id to load it with the correct settings
+                parts
+            });
+        }
+        const loadData = {
+            instruments
+        }
+
+        return loadData;
+    }
+
+
+    async load(data, noCreation = false) {
         this.instruments.forEach(instrument => instrument.remove(false));
         if (data.instruments) {
             for (const instrumentData of data.instruments) {
-                const instrument = await this.addInstrument(instrumentData.name, instrumentData.instrument.id, instrumentData.instrument.channel, instrumentData.instrument.presets);
+                let instrument;
+                if (noCreation) {
+                    instrument = await this.addInstrument(instrumentData.name, null, null, null, instrumentData.instrumentId);
+
+                } else {
+                    instrument = await this.addInstrument(instrumentData.name, instrumentData.instrumentId, instrumentData.channel, instrumentData.presets);
+                }
                 instrumentData.parts.forEach(partData => {
-                    instrument.addPart(partData.name, partData.startTime, partData.duration);
+                    instrument.addPart(partData.name, partData.startTime, partData.duration, partData.data ?? null, partData.dataType ?? "raw");
                 });
             };
         }
@@ -453,6 +596,15 @@ export class SongParts extends ViewTemplate {
             this.undoBuffer.shift();
         } else {
             this.undoIndex++;
+        }
+    }
+
+    tearDown() {
+        if (this.playbackStartedEvent) {
+            window.webDaw.eventSystem.unregisterEventListener("playbackStarted", this.playbackStartedEvent);
+        }
+        if (this.playbackStoppedEvent) {
+            window.webDaw.eventSystem.unregisterEventListener("playbackStopped", this.playbackStoppedEvent);
         }
     }
 }

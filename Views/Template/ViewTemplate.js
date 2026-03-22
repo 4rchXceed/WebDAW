@@ -77,13 +77,17 @@ export class ViewTemplate {
     /**
      * A helper method to set the data of the currently selected part. This can be useful for views that need to modify the part data.
      * @param {object} data The part data
+     * @param {string} dataType The type of the data (if you create a custom view, you can use this parameter to specify the type of the data, so your PartPlayer plugin class will be able to handle it correctly. THERE NEEDS TO BE ONLY ONE (or less if it's not supposed to be played) PartPlayer plugin class for each data type, and it needs to be registered with the same data type string)
+     * A good practice for the dataType parameter is to add a random number / string at the end, to avoid conflicts with other views or plugins that might use the same data type string.
+     * Example: "piano-roll-notes-12345" or "my-custom-data-67890". This way, you can be sure that your data type string is unique and won't conflict with other views or plugins.
      */
-    app__setSelectedPartData(data) {
+    app__setSelectedPartData(data, dataType = "raw") {
         if (window.webDaw.currentPart.partId === null) {
             window.error(false, "No part selected");
         } else {
             const project = this.app__getProject();
             project.songData.instrumentData[window.webDaw.currentPart.instrumentId].parts[window.webDaw.currentPart.partId].data = data;
+            project.songData.instrumentData[window.webDaw.currentPart.instrumentId].parts[window.webDaw.currentPart.partId].dataType = dataType;
         }
     }
 

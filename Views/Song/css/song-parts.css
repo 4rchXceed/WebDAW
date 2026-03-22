@@ -51,15 +51,23 @@
     opacity: 0.7;
 }
 
+.song-part-parts-container {
+    width: 100%;
+    overflow-x: auto;
+    margin-left: 60px;
+}
+
 .song-part-parts {
     user-select: none;
     display: flex;
+    /* Allow the container to shrink */
+    flex-grow: 0;
     gap: 5px;
-    flex-grow: 1;
-    margin-left: 60px;
+    box-sizing: content-box;
+    border-right: 5px solid var(--secondary-bg);
     justify-content: flex-start;
     flex-wrap: nowrap;
-    overflow-x: auto;
+    overflow-x: visible;
     padding: 0;
     width: 100%;
     height: 40px;
@@ -71,6 +79,18 @@
             transparent var(--song-part-width, 20px));
     position: relative;
     background-position: var(--song-parts-scroll, 0px) 0;
+}
+
+.song-part-playerbar {
+    /* Most of the position job will be done in JS due to the bad html structure */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background-color: var(--accent);
+    z-index: 1;
+    cursor: ew-resize;
 }
 
 .song-part-part {
@@ -88,6 +108,12 @@
     text-overflow: ellipsis;
     text-wrap: nowrap;
     /* width will be set in JS */
+}
+
+.song-parts-song-length {
+    position: absolute;
+    list-style-type: none;
+    visibility: hidden;
 }
 
 .song-part-resize {

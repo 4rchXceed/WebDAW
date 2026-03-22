@@ -22,13 +22,20 @@ export class AudioChannel {
         }
     }
 
+    setVolume(newVolume) {
+        this.volume = newVolume;
+        this.stream.masterGain.gain.value = newVolume;
+    }
+
     registerEffect(effect) {
+        this.stream.connectEffect(effect);
         this.effects.push(effect);
     }
 
     unregisterEffect(effect) {
         const index = this.effects.indexOf(effect);
         if (index !== -1) {
+            this.stream.disconnectEffect(effect);
             this.effects.splice(index, 1);
         }
     }
@@ -44,6 +51,10 @@ export class AudioChannel {
                 }
             }),
         };
+    }
+
+    tearDown() {
+        this.stream.tearDown();
     }
 
     loadState(state) {

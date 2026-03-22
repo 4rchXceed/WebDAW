@@ -14,11 +14,12 @@ class Note {
         this.hasEnded = false;
     }
 
-    placeNote() {
+    placeNote(playPreview = false) {
         let x = this.notesCreator.currentBarWidth * (this.time - this.notesCreator.PIANO_NOTE_WIDTH / this.notesCreator.BAR_WIDTH); // We need to offset the note to the left because of the piano note area
         const noteElement = document.createElement("div");
         noteElement.classList.add("view-note-note-canvas");
         noteElement.style.top = `${this.notesCreator.notesBgLines[this.note].offsetTop}px`;
+
         noteElement.style.left = `${x}px`;
         noteElement.style.width = `${this.duration * this.notesCreator.currentBarWidth}px`;
         this.htmlElement = noteElement;
@@ -53,7 +54,9 @@ class Note {
         }
         noteElement.appendChild(this.velocitySlider);
         this.notesCreator.notesCanvas.appendChild(noteElement);
-        this.playPreview();
+        if (playPreview) {
+            this.playPreview();
+        }
     }
 
     playPreview() {
@@ -127,6 +130,7 @@ export class NotesCreator extends ViewTemplate {
      */
     constructor() {
         super();
+        this.dataType = "notes-creator-notes-977701";
         this.VIEW_NAME = "NotesCreator";
         this.maxActionBuffer = this.MAX_ACTION_BUFFER;
         this.actionBuffer = [[]]; // Empty action buffer with an initial state
@@ -139,7 +143,7 @@ export class NotesCreator extends ViewTemplate {
         this.notes = [];
         this.isMouseDown = false;
         this.mouseDownElement = null;
-        this.currentPlayPosition = 0;
+        this.currentPlayPosition = this.PIANO_NOTE_WIDTH / this.BAR_WIDTH; // Init with the offset
         this.defaultVel = 100;
         this.bpm = 110;
         this.playInterval = null;
@@ -152,6 +156,7 @@ export class NotesCreator extends ViewTemplate {
         this.isMovingNotes = false;
         this.movingNote = null; // If there's a selection, we will use this.selectedNotes instead
         this.copyBuffer = []; // Buffer to store copied notes for copy/paste functionality
+
     }
 
     getSelectedNotes() {
@@ -274,16 +279,6 @@ export class NotesCreator extends ViewTemplate {
         this.settingsPanelOpenBtn.classList.add("view-note-settings-panel-open-btn");
         this.settingsPanelOpenBtn.textContent = "Settings";
         this.container.appendChild(this.settingsPanelOpenBtn);
-        let partData = this.app__getSelectedPartData();
-        if (partData) {
-            if (!partData[0].data.map) { // Hasn't been initialized yet, so we initialize it. By default a partData is just an empty object
-                partData[0].data = [];
-            }
-            this.songLength = Math.round(partData[0].duration / this.timeSig); // Convert length in beats to length in bars, we round it, to avoid having a weird number of bars
-            this.loadFromArray(partData[0].data);
-        } else {
-            window.error(false, "NotesCreator: No part data found for the selected part. Make sure to select a part before opening the NotesCreator view.")
-        }
     }
 
     /**
@@ -458,7 +453,7 @@ export class NotesCreator extends ViewTemplate {
                             this.notes.push(noteObj);
                             this.isMouseDown = true;
                             this.mouseDownElement = noteObj;
-                            noteObj.placeNote();
+                            noteObj.placeNote(true);
                         } else {
                             const existingNote = this.getNoteByTimeAndNote(beat, note);
                             if (existingNote) {
@@ -534,7 +529,7 @@ export class NotesCreator extends ViewTemplate {
             }
 
             if (this.isMovingNotes && this.movingNote && this.selectedNotes.length === 0) {
-                this.movingNote.time = Math.min(Math.max(0, beat), this.songLength * this.timeSig - this.movingNote.duration);
+                this.movingNote.time = Math.min(Math.max(0, beat), this.songLength * this.timeSig - this.movingNote.duration + this.PIANO_NOTE_WIDTH / this.currentBarWidth);
                 this.movingNote.note = Math.max(0, note); // TODO: Add max note limit
                 this.movingNote.updateNote();
             } else if (this.isMovingNotes && this.selectedNotes.length > 0) {
@@ -542,8 +537,8 @@ export class NotesCreator extends ViewTemplate {
                 const timeDiff = beat - this.movingNote.time;
                 const noteDiff = note - this.movingNote.note;
                 this.selectedNotes.forEach(n => {
-                    n.time = Math.min(Math.max(0, n.time + timeDiff), this.songLength * this.timeSig - n.duration);
-                    n.note = Math.max(0, n.note + noteDiff); // TODO: Add max note limit
+                    n.time = Math.min(Math.max(0, n.time + timeDiff), this.songLength * this.timeSig - n.duration + this.PIANO_NOTE_WIDTH / this.currentBarWidth);
+                    n.note = Math.max(0, n.note + noteDiff); // TODO: Add max note limit TODO: What is max note limit? I don't remember. TOTHINK: FACKNG WRITE BETTER COMMENTS YOU IDIOT
                     n.updateNote();
                 });
             }
@@ -691,6 +686,18 @@ export class NotesCreator extends ViewTemplate {
         setTimeout(() => {
             this.zoomY(this.currentZoomY);
         }, 500);
+        let partData = this.app__getSelectedPartData();
+
+        if (partData) {
+            if (!partData[0].data) { // Hasn't been initialized yet, so we initialize it. By default a partData is just an empty object
+                partData[0].data = [];
+            }
+            this.songLength = Math.round(partData[0].duration / this.timeSig); // Convert length in beats to length in bars, we round it, to avoid having a weird number of bars
+            this.loadFromArray(partData[0].data, false);
+        } else {
+            window.error(false, "NotesCreator: No part data found for the selected part. Make sure to select a part before opening the NotesCreator view.")
+        }
+
     };
 
     /**
@@ -755,11 +762,11 @@ export class NotesCreator extends ViewTemplate {
             const fakeCurrentBeat = ((performance.now() - (startTime + (this.app__getSharedPool("global/audio/vstWeb").getBufferTime() * 1000))) / this.convertBeatToMs(1)) + this.currentPlayPosition;
 
             if (fakeCurrentBeat >= 0) { // We use a fake current beat that takes into account the audio buffer time to sync the player bar with the actual sound, otherwise it'll be off by the buffer time
-                this.playerBar.style.left = `${(fakeCurrentBeat * this.currentBarWidth)}px`;
+                this.playerBar.style.left = `${((fakeCurrentBeat - this.PIANO_NOTE_WIDTH / this.BAR_WIDTH) * this.currentBarWidth + this.PIANO_NOTE_WIDTH)}px`;
             }
-            if (currentBeat - (this.PIANO_NOTE_WIDTH / this.currentBarWidth) >= this.songLength * this.timeSig) {
+            if (currentBeat - (this.PIANO_NOTE_WIDTH / this.BAR_WIDTH) >= this.songLength * this.timeSig) {
                 this.stop();
-                this.currentPlayPosition = 0;
+                this.currentPlayPosition = this.PIANO_NOTE_WIDTH / this.BAR_WIDTH; // Reset to the offset, so it'll be at the start of the song
                 this.updatePlayerBar();
             }
         }, 5);
@@ -772,7 +779,7 @@ export class NotesCreator extends ViewTemplate {
         if (this.playInterval) {
             clearInterval(this.playInterval);
             this.playInterval = null;
-            this.currentPlayPosition = Math.round(this.playerBar.offsetLeft / this.currentBarWidth); // Sync the play position with the player bar, in case the user moved it during playback
+            this.currentPlayPosition = Math.round((this.playerBar.offsetLeft - this.PIANO_NOTE_WIDTH) / this.currentBarWidth + this.PIANO_NOTE_WIDTH / this.BAR_WIDTH); // Sync the play position with the player bar, in case the user moved it during playback
         }
         this.updatePlayerBar();
         this.isPlaying = false;
@@ -780,12 +787,15 @@ export class NotesCreator extends ViewTemplate {
         const notes = [];
         this.notes.forEach((note) => {// Make sure ALL notes are off
             const midiNote = this.convertNoteToMidiNoteNumber(note.note);
+            console.log(midiNote);
+
             if (notes.indexOf(midiNote) === -1) { // No need to turn off the note again if it's already turned off in the checkEnd loop above
                 const currentInstrument = this.app__getSelectedPartData()[1].instrumentId;
                 const audioManager = this.app__getAudioManager();
                 if (audioManager) {
                     audioManager.play(currentInstrument, {
-                        type: "noteOff",
+                        type: "note",
+                        internalType: "noteOff",
                         note: midiNote,
                         velocity: 0,
                     });
@@ -800,7 +810,7 @@ export class NotesCreator extends ViewTemplate {
      * Update the position of the player bar based on the current play position.
      */
     updatePlayerBar() {
-        this.playerBar.style.left = `${(this.currentPlayPosition * this.currentBarWidth)}px`;
+        this.playerBar.style.left = `${((this.currentPlayPosition - this.PIANO_NOTE_WIDTH / this.BAR_WIDTH) * this.currentBarWidth + this.PIANO_NOTE_WIDTH)}px`;
     }
 
     // /**
@@ -830,8 +840,10 @@ export class NotesCreator extends ViewTemplate {
      * Load notes from an array of note objects, where it can be serialized (mostly used to the undo/redo buffer)
      * @param {object[]} notesArray 
      */
-    loadFromArray(notesArray) {
-        this.app__setSelectedPartData(notesArray);
+    loadFromArray(notesArray, save = true) {
+        if (save) {
+            this.app__setSelectedPartData(notesArray);
+        }
         this.notes.forEach(note => note.remove());
         this.notes = notesArray.map(n => new Note(n.time + Math.round(this.PIANO_NOTE_WIDTH / this.currentBarWidth), n.note, n.duration, n.velocity, this));
         this.notes.forEach(note => note.placeNote());
@@ -890,7 +902,7 @@ export class NotesCreator extends ViewTemplate {
      */
     modified() {
         const save = this.saveToArray()
-        this.app__setSelectedPartData(save);
+        this.app__setSelectedPartData(save, this.dataType);
         this.actionBuffer.push(save);
         this.actionBuffer = this.actionBuffer.slice(0, this.actionBufferPointer + 1); // Remove any redo history if we made a new action
         this.actionBufferPointer++;
@@ -898,7 +910,6 @@ export class NotesCreator extends ViewTemplate {
             this.actionBuffer.shift();
         }
     }
-
 }
 
 // window.addEventListener("DOMContentLoaded", () => {

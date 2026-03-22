@@ -79,7 +79,7 @@ export class VstWorker {
         const { type, data } = event.data;
         if (type === "audio") {
             // TODO: implement, in c++ AND here, an way to distinguish different audio channels (for now we will just have one channel for everything)
-            window.webDaw.audioManager.channels[Object.keys(this.loadedVsts)[0]].write(data, "vstWebOutput");
+            window.webDaw.audioManager.channels[this.loadedVsts[Object.keys(this.loadedVsts)[0]]].write(data, "vstWebOutput");
         } else if (type === "imageData") {
             this.canvas.getContext("2d").putImageData(data.imageData, data.x, data.y, data.dx, data.dy, data.b_w, data.b_h);
         } else if (type === "load_done") {
